@@ -1,41 +1,48 @@
 # xv6 Kernel Architecture Enhancements
 
 ## Overview
-This repository contains a customized version of the xv6 operating system (a modern re-implementation of Sixth Edition Unix developed by MIT). The project documents a progressive, multi-phase engineering lifecycle aimed at enhancing the core monolithic kernel architecture. 
-
-The implementations focus on advanced process scheduling policies, memory allocation optimization, and the integration of secure system call boundaries.
+This repository contains a customized version of the xv6 operating system (a modern re-implementation of Sixth Edition Unix developed by MIT). The project documents a progressive, multi-phase engineering lifecycle aimed at enhancing the core monolithic kernel architecture. The implementations focus on advanced process scheduling policies, memory allocation optimization, and the integration of secure system call boundaries.
 
 ---
 
 ## Architectural Enhancements
 
 ### 1. Process Management & Scheduling Subsystem
-* **Custom Scheduler:** Replaced the baseline Round-Robin scheduling algorithm with an advanced policy (such as Priority-Based or Multi-Level Queue Scheduling) to optimize CPU throughput and turnaround metrics.
-* **Process Control Block (PCB) Extensions:** Augmented the core `struct proc` tracking mechanisms to profile contextual runtime metrics, priority states, and structural state-transition tracking.
-* **Concurrency Controls:** Optimized low-level spinlocks within the kernel dispatcher (`proc.c`) to safeguard race conditions during intensive context switching.
+- Custom Scheduler: Replaced the baseline Round-Robin scheduling algorithm with an advanced policy (such as Priority-Based or Multi-Level Queue Scheduling) to optimize CPU throughput and turnaround metrics.
+- Process Control Block (PCB) Extensions: Augmented the core struct proc tracking mechanisms to profile contextual runtime metrics, priority states, and structural state-transition tracking.
+- Concurrency Controls: Optimized low-level spinlocks within the kernel dispatcher (proc.c) to safeguard race conditions during intensive context switching.
 
 ### 2. Memory Management Subsystem
-* **Virtual Memory & Address Space Mapping:** Modified inner kernel paging directories to handle custom user-space allocation constraints, memory protection bits, or shared memory setups.
-* **Dynamic Resource Controls:** Enhanced heap allocation boundaries and system copy-on-write setups to minimize active dynamic memory overhead under heavy multiprocessing loads.
+- Virtual Memory & Address Space Mapping: Modified inner kernel paging directories to handle custom user-space allocation constraints, memory protection bits, or shared memory setups.
+- Dynamic Resource Controls: Enhanced heap allocation boundaries and system copy-on-write setups to minimize active dynamic memory overhead under heavy multiprocessing loads.
 
 ### 3. File System & System Call Interfaces
-* **System Call Vectoring:** Engineered custom system call entry points by expanding the core kernel trap-vector tables (`syscall.c`, `syscall.h`, `sysproc.c`).
-* **User-Kernel Boundary Isolation:** Implemented rigid argument retrieval protocols (`argint`, `argptr`) to guarantee system memory isolation and protect the kernel plane from faulting user space pointers.
-* **File Subsystem Tracking:** Modified active file descriptor allocations or inode lookup pathways to optimize localized diagnostic tracking operations.
+- System Call Vectoring: Engineered custom system call entry points by expanding the core kernel trap-vector tables (syscall.c, syscall.h, sysproc.c).
+- User-Kernel Boundary Isolation: Implemented rigid argument retrieval protocols (argint, argptr) to guarantee system memory isolation and protect the kernel plane from faulting user space pointers.
+- File Subsystem Tracking: Modified active file descriptor allocations or inode lookup pathways to optimize localized diagnostic tracking operations.
 
 ---
 
 ## Technical Environment & Architecture
-* **Language:** C (Low-Level Kernel Subsystems)
-* **Target Architecture:** Intel x86 (32-bit execution state)
-* **Emulation / Simulation Platform:** QEMU Emulator
-* **Compilation Utility:** GNU Make with cross-compilation infrastructure
+- Language: C (Low-Level Kernel Subsystems)
+- Target Architecture: Intel x86 (32-bit execution state)
+- Emulation / Simulation Platform: QEMU Emulator
+- Compilation Utility: GNU Make with cross-compilation infrastructure
 
 ---
 
 ## Building and Verification Lifecycle
 
 ### Build the Kernel Image
-To compile the modified bootloader, kernel architecture, and user-space binaries, run:
-```bash
-make
+To compile the modified bootloader, kernel architecture, and user-space binaries, run the command: make
+
+### Execution via QEMU Emulator
+To boot up the modified xv6 operating system inside a safe, emulated environment:
+- For Standard Console Interface, run the command: make qemu
+- For Headless Console Execution (No Graphical Interface wrapper), run the command: make qemu-nox
+
+### Cross-Compilation Flags (Mac/Modern Platforms workaround)
+If compiling on host architectures lacking native x86 32-bit compilation toolchains, override the build utilities via the TOOLPREFIX variable by running the command: make TOOLPREFIX=i386-elf- qemu-nox
+
+### Clean Compiled Artifacts
+To wipe system object files (.o), kernel blocks, and testing runtime logs, run the command: make clean
