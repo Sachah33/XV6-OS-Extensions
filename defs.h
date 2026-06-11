@@ -1,8 +1,3 @@
-// MAMAN 02
-// This header exposes kernel function declaration
-// T.Z: 329604441
-// Name: Sacha HADJADJ
-
 struct buf;
 struct context;
 struct file;
@@ -185,7 +180,6 @@ void            userinit(void);
 int             wait(int*);
 void            wakeup(void*);
 void            yield(void);
-int             cps141(void);
 int             cgroup_move_proc(struct cgroup * cgroup, int pid);
 
 // swtch.S

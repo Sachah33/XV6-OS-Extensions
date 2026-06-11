@@ -1,8 +1,3 @@
-// MAMAN 02
-// This header contains function prototypes for syscalls that can be used by user space programs.
-// T.Z: 329604441
-// Name: Sacha HADJADJ
-
 #ifndef XV6_USER_H
 #define XV6_USER_H
 
@@ -42,9 +37,8 @@ int getppid(void);
 int getcpu(void);
 int getmem(void);
 int kmemtest(void);
-int cps141(void);
 
-int mount(const char*, const char*, const char*);
+int mount(const char*, const char*, const char *);
 int umount(const char*);
 int printmounts(void);
 int printdevices(void);

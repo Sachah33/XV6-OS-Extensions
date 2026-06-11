@@ -5,4 +5,5 @@ struct mount {
   uint dev;
 };
 
-#define NMOUNT (200)
+//#define NMOUNT (200)
+#define NMOUNT 10
