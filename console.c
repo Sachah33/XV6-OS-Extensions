@@ -12,17 +12,42 @@
 #include "file.h"
 #include "memlayout.h"
 #include "mmu.h"
+#include "pid_ns.h"
 #include "proc.h"
 #include "x86.h"
+#include "fcntl.h"
+
+//PAGEBREAK: 50
+#define BACKSPACE 0x100
+#define CRTPORT 0x3d4
+static ushort *crt = (ushort*)P2V(0xb8000);  // CGA memory
+static int panicked = 0;
+
+typedef struct device_lock {
+  struct spinlock lock;
+  int locking;
+} device_lock;
+
+typedef struct tty {
+  int flags;
+  struct spinlock lock;
+} tty;
+
+tty tty_table[MAX_TTY];
+
+static device_lock cons;
+
 
 static void consputc(int);
 
-static int panicked = 0;
-
-static struct {
-  struct spinlock lock;
-  int locking;
-} cons;
+static inline void update_pos(int pos)
+{
+  outb(CRTPORT, 14);
+  outb(CRTPORT+1, pos>>8);
+  outb(CRTPORT, 15);
+  outb(CRTPORT+1, pos);
+  crt[pos] = ' ' | 0x0700;
+}
 
 static void
 printint(int xx, int base, int sign)
@@ -123,11 +148,6 @@ panic(char *s)
     ;
 }
 
-//PAGEBREAK: 50
-#define BACKSPACE 0x100
-#define CRTPORT 0x3d4
-static ushort *crt = (ushort*)P2V(0xb8000);  // CGA memory
-
 static void
 cgaputc(int c)
 {
@@ -155,11 +175,13 @@ cgaputc(int c)
     memset(crt+pos, 0, sizeof(crt[0])*(24*80 - pos));
   }
 
-  outb(CRTPORT, 14);
-  outb(CRTPORT+1, pos>>8);
-  outb(CRTPORT, 15);
-  outb(CRTPORT+1, pos);
-  crt[pos] = ' ' | 0x0700;
+  update_pos(pos);
+}
+
+void consoleclear(void){
+  int pos = 0;
+  memset(crt, 0, sizeof(crt[0])*(24*80));
+  update_pos(pos);
 }
 
 void
@@ -271,6 +293,25 @@ consoleread(struct inode *ip, char *dst, int n)
 }
 
 int
+ttyread(struct inode *ip, char *dst, int n)
+{
+  if(tty_table[ip->minor].flags & DEV_CONNECT){
+    return consoleread(ip,dst,n);
+  }
+
+  if(tty_table[ip->minor].flags & DEV_ATTACH)
+  {
+    iunlock(ip);
+    acquire(&tty_table[ip->minor].lock);
+    sleep(&tty_table[ip->minor], &tty_table[ip->minor].lock);
+    //after wakeup has been called
+    release(&tty_table[ip->minor].lock);
+    ilock(ip);
+  }
+  return -1;
+}
+
+int
 consolewrite(struct inode *ip, char *buf, int n)
 {
   int i;
@@ -285,15 +326,79 @@ consolewrite(struct inode *ip, char *buf, int n)
   return n;
 }
 
+int
+ttywrite(struct inode *ip, char *buf, int n)
+{
+  if(tty_table[ip->minor].flags & DEV_CONNECT){
+    return consolewrite(ip,buf,n);
+  }
+  //2DO: should return -1 when write to tty fails - filewrite panics.
+  return n;
+}
+
 void
 consoleinit(void)
 {
   initlock(&cons.lock, "console");
 
-  devsw[CONSOLE].write = consolewrite;
-  devsw[CONSOLE].read = consoleread;
+  devsw[CONSOLE_MAJOR].write = ttywrite;
+  devsw[CONSOLE_MAJOR].read = ttyread;
+  tty_table[CONSOLE_MINOR].flags = DEV_CONNECT;
+
+  //To state that the console tty is also attached
+  //this will make the console sleep whilre we are connected to another tty.
+  tty_table[CONSOLE_MINOR].flags |= DEV_ATTACH;
+  initlock(&tty_table[CONSOLE_MINOR].lock, "ttyconsole");
+
   cons.locking = 1;
 
   ioapicenable(IRQ_KBD, 0);
 }
 
+void
+ttyinit(void)
+{
+  // we create tty devices after the console
+  // therefor the tty's minor will be after the console's
+  for(int i = CONSOLE_MINOR+1; i < MAX_TTY; i++){
+     tty_table[i].flags = 0;
+  }
+}
+
+void tty_disconnect(struct inode *ip) {
+  tty_table[ip->minor].flags &=  ~(DEV_CONNECT);
+  tty_table[CONSOLE_MINOR].flags |=  DEV_CONNECT;
+
+  //wakeup the console (it is sleeping now while being attached)
+  wakeup(&tty_table[CONSOLE_MINOR]);
+
+  consoleclear();
+  cprintf("Console connected\n");
+}
+
+void tty_connect(struct inode *ip) {
+  tty_table[ip->minor].flags |= DEV_CONNECT;
+  for(int i = CONSOLE_MINOR; i < MAX_TTY; i++){
+    if(ip->minor != i){
+      tty_table[i].flags &= ~(DEV_CONNECT);
+  }
+ }
+ consoleclear();
+ cprintf("\ntty%d connected\n",ip->minor-(CONSOLE_MINOR+1));
+
+ //Wakeup the processes that slept on ttyread()
+ wakeup(&tty_table[ip->minor]);
+}
+
+void tty_attach(struct inode *ip) {
+  tty_table[ip->minor].flags |= DEV_ATTACH;
+  initlock(&(tty_table[ip->minor].lock), "tty");
+}
+
+void tty_detach(struct inode *ip) {
+  tty_table[ip->minor].flags &= ~(DEV_ATTACH);
+}
+
+int tty_gets(struct inode *ip, int command) {
+  return (tty_table[ip->minor].flags & command ? 1 : 0);
+}

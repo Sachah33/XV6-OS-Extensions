@@ -23,6 +23,14 @@ strcmp(const char *p, const char *q)
   return (uchar)*p - (uchar)*q;
 }
 
+int
+strncmp(const char *p, const char *q, int n)
+{
+  while(*p && *p == *q && --n)
+    p++, q++;
+  return (uchar)*p - (uchar)*q;
+}
+
 uint
 strlen(const char *s)
 {
@@ -58,7 +66,7 @@ gets(char *buf, int max)
   for(i=0; i+1 < max; ){
     cc = read(0, &c, 1);
     if(cc < 1)
-      break;
+      continue;
     buf[i++] = c;
     if(c == '\n' || c == '\r')
       break;
@@ -103,4 +111,60 @@ memmove(void *vdst, const void *vsrc, int n)
   while(n-- > 0)
     *dst++ = *src++;
   return vdst;
+}
+
+/*
+ * Set buf to string representation of number in int.
+ */
+int itoa(char * buf, int n)
+{
+    int i = n;
+    int length = 0;
+
+    while (i > 0) {
+        length++;
+        i /= 10;
+    }
+
+    if (n == 0) {
+        buf[0] = '0';
+        length++;
+    }
+    for (i = length; n > 0 && i > 0; i--) {
+        buf[i - 1] = (n % 10) + '0';
+        n /= 10;
+    }
+    buf[length] = '\0';
+    return length;
+}
+
+char* strcat(char* dest, const char* source)
+{
+        int i, j;
+
+        for (i = 0; dest[i] != '\0'; i++);
+
+        for (j = 0; source[j] != '\0'; j++)
+                dest[i + j] = source[j];
+
+        dest[i + j] = '\0';
+
+        return dest;
+}
+
+char * strstr(char * src, char * needle)
+{
+  uint i = 0;
+  uint needle_size = strlen(needle);
+  uint src_len = strlen(src);
+
+  for(i = 0; i < src_len; i++)
+  {
+    if(0 == strncmp(src, needle, needle_size))
+    {
+      return src + needle_size;
+    }
+    src++;
+  }
+  return 0;
 }

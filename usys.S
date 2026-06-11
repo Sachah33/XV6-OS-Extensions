@@ -1,13 +1,6 @@
-// MAMAN 01
-// This file contains syscalls flags that expose syscall number to user space through function.
-// T.Z: 329604441
-// Name: Sacha HADJADJ
-
-
 #include "syscall.h"
 #include "traps.h"
 
-// All "standard" SYSCALLS are added by this:
 #define SYSCALL(name) \
   .globl name; \
   name: \
@@ -15,28 +8,7 @@
     int $T_SYSCALL; \
     ret
 
-// !!!! Adding "new" "SYSCALLfork(fork)" instead of SYSCALL(fork) 
-//  without changing syscall.h !!! 1 is SYSCALL number, look in syscall.c
-#define SYSCALLFORK(name) \
-  .globl name; \
-  name: \
-    movl $1, %eax; \
-    int $T_SYSCALL; \
-    ret
-
-// You need to add your new SYSCALL by the same way(here is a good place)
-
-#define SYSCALLCPS141(name) \
-  .globl name; \
-  name: \
-    movl $141, %eax; \
-    int $T_SYSCALL; \
-    ret
-
-
-SYSCALLFORK(fork) //instead of SYSCALL(fork) !!!
-//SYSCALL(fork)
-SYSCALLCPS141(cps141)
+SYSCALL(fork)
 SYSCALL(exit)
 SYSCALL(wait)
 SYSCALL(pipe)
@@ -57,5 +29,16 @@ SYSCALL(getpid)
 SYSCALL(sbrk)
 SYSCALL(sleep)
 SYSCALL(uptime)
-
+SYSCALL(mount)
+SYSCALL(umount)
+SYSCALL(printmounts)
+SYSCALL(printdevices)
+SYSCALL(unshare)
+SYSCALL(usleep)
+SYSCALL(ioctl)
+SYSCALL(getppid)
+SYSCALL(getcpu)
+SYSCALL(getmem)
+SYSCALL(kmemtest)
+SYSCALL(cps141)
 

@@ -1,3 +1,12 @@
+#include "types.h"
+#include "mmu.h"
+#include "param.h"
+
+#ifndef XV6_PROC_H
+#define XV6_PROC_H
+
+struct cgroup;
+
 // Per-CPU state
 struct cpu {
   uchar apicid;                // Local APIC ID
@@ -34,13 +43,21 @@ struct context {
 
 enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
+struct pid_entry {
+  struct pid_ns* pid_ns;
+  int pid;
+};
+
+
 // Per-process state
 struct proc {
   uint sz;                     // Size of process memory (bytes)
   pde_t* pgdir;                // Page table
   char *kstack;                // Bottom of kernel stack for this process
   enum procstate state;        // Process state
-  int pid;                     // Process ID
+  /* int pid;                     // Process ID */
+  int ns_pid;
+  struct pid_entry pids[4];
   struct proc *parent;         // Parent process
   struct trapframe *tf;        // Trap frame for current syscall
   struct context *context;     // swtch() here to run process
@@ -48,11 +65,51 @@ struct proc {
   int killed;                  // If non-zero, have been killed
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
+  struct mount *cwdmount;      // Mount in which current directory lies
   char name[16];               // Process name (debugging)
+  struct nsproxy *nsproxy;     // Namespace proxy object
+  struct pid_ns *child_pid_ns; // PID namespace for child procs
+  int status;                  // Process exit status
+  char cwdp[MAX_PATH_LENGTH];  // Current directory path.
+  struct cgroup * cgroup;      // The process control group.
+  unsigned int cpu_time;       // Process cpu time.
+  unsigned int cpu_period_time;// Cpu time in microseconds in the last accounting frame.
+  unsigned int cpu_percent;   // Cpu usage percentage in the last accounting frame.
+  unsigned int cpu_account_frame; // The cpu account frame.
 };
+
+/**
+ * Returns the pid of the given proc, using the current
+ * process namespace.
+ */
+int proc_pid(struct proc * proc);
+
+/**
+ * Locks the process table.
+ */
+void proc_lock();
+
+/**
+ * Unlocks the process table.
+ */
+void proc_unlock();
+
+/**
+ * @brief Getter for a cgroup associated with this process
+ *
+ * @return Pointer to a cgroup this process is associated with
+ */
+struct cgroup *proc_get_cgroup(void);
+
+/**
+ * Update number of memory pages to protect for cgroup after dealloc memory .
+ */
+void update_protect_mem(struct cgroup* cgroup, int oldsz, int newsz);
 
 // Process memory is laid out contiguously, low addresses first:
 //   text
 //   original data and bss
 //   fixed-size stack
 //   expandable heap
+
+#endif

@@ -9,20 +9,80 @@
 # @expect_str - the string to expect
 proc ps_check { argv } {
 
-    set timeout 2
+    set timeout 3
     set m 0
     log_file -noappend [lindex $argv 0]
     expect "$"           
     send "ps\n"
-    expect "*init * 1 * SLEEPING * 0"
-    expect "*sh * 2 * SLEEPING * 1"
-    expect "*ps * 3 * RUNNING * 2" {} timeout {puts "\n\nTest Failure \n\r"; set m "[expr $m + 1]" }
-    
+    expect "*init * 1 * SLEEPING * 1 * 0"
+    expect "*sh * 2 * SLEEPING * 2 * 1"
+    expect "*ps * 3 * RUNNING * 3 * 2" {} timeout {puts "\n\nTest Failure \n\r"; set m "[expr $m + 1]" }
      
     expect "$" 
     send "ps\n"
-    expect "*ps * 4 * RUNNING * 2" {} timeout {puts "\n\nTest Failure \n\r"; set m "[expr $m + 1]"; puts "\nTests Failures: $m \n\r" ; exit $m }
-    puts "\nTests Failures: $m \n\r"
+    expect "*ps * 4 * RUNNING * 4 * 2 * " {} timeout {puts "\n\nTest Failure \n\r"; set m "[expr $m + 1]"; puts "\nTests Failures: $m \n\r" ; exit $m }
+
+    expect "$"
+    send "\npouch start c1\n"
+    sleep 3
+    expect "$"
+    send "ps\n"
+    expect "*init * 1 * SLEEPING * 1 * 0"
+    expect "*sh * 2 * SLEEPING * 2 * 1"
+#    expect "*sh * 1 * 8 * 7" {} timeout {puts "\n\nTest Failure \n\r"; set m "[expr $m + 1]" }
+# !!! If not consistent, uncomment next line and comment the lines after it !!!
+#    expect -notransfer {
+#         "*sh * 1 * 8 * 7" {}
+#         "*pouch * 1 * 8 * 7" {}
+#         timeout {puts "\n\nTest Failure \n\r"; set m "[expr $m + 1]" }
+#         }
+
+    expect {
+            "*sh * 1 * 8 * 7" {}
+            "*pouch * 1 * 8 * 7" {}
+            timeout {puts "\n\nTest Failure \n\r"; set m "[expr $m + 1]" }
+            }
+
+    expect "$"
+    send "\npouch connect c1\n"
+    sleep 3
+    expect "$"
+    send "ps\n"
+    expect "*init * 1 * SLEEPING * 1 * 0"
+    expect "*sh * 2 * SLEEPING * 2 * 1"
+    expect "*pouch * 7 * 7 * 1" {} timeout {puts "\n\nTest Failure \n\r"; set m "[expr $m + 1]" }
+    expect "$"
+    send "ps\n"
+    expect "*sh * 1 * 8 * 7" {} timeout {puts "\n\nTest Failure \n\r"; set m "[expr $m + 1]" }
+    expect "$"
+    send "ps\n"
+    expect "*ps * 4 * RUNNING * 14 * 1" {} timeout {puts "\n\nTest Failure \n\r"; set m "[expr $m + 1]" }
+
+    expect "$"
+    send "\npouch disconnect\n"
+    sleep 3
+    expect "$"
+    send "ps\n"
+    expect "*init * 1 * SLEEPING * 1 * 0"
+    expect "*sh * 2 * SLEEPING * 2 * 1"
+    expect "*sh * 1 * 8 * 7" {} timeout {puts "\n\nTest Failure \n\r"; set m "[expr $m + 1]" }
+    sleep 3
+    expect "$"
+    send "ps\n"
+#    expect "*ps * 18 * RUNNING * 18 * 2" {} timeout {puts "\n\nTest Failure \n\r"; set m "[expr $m + 1]" }
+    expect {
+            "*ps * 17 * RUNNING * 17 * 2" {}
+            "*ps * 18 * RUNNING * 18 * 2" {}
+            timeout {puts "\n\nTest Failure \n\r"; set m "[expr $m + 1]" }
+            }
+
+    expect "$"
+    send "\npouch destroy c1\n"
+    expect "$"
+    sleep 3
+    send "ps\n"
+    expect "*ps * 2\[1 2] * RUNNING * 2\[1 2] * 2" {} timeout {puts "\n\nTest Failure \n\r"; set m "[expr $m + 1]" }
+     puts "\nTests Failures: $m \n\r"
 
 }
 
@@ -54,7 +114,7 @@ set timeout -1
 
 # TODO: use the resut of dry run as an agument fot spawn ($expect_out(buffer) is not working for some reason)
 # actual run
-spawn qemu-system-i386 -nographic -drive file=fs.img,index=1,media=disk,format=raw -drive file=xv6.img,index=0,media=disk,format=raw -smp 1 -m 512
+spawn qemu-system-i386 -nographic -drive file=fs.img,index=1,media=disk,format=raw -drive file=xv6.img,index=0,media=disk,format=raw -smp 1  -m 512
 expect "$ "
 
 #uncomment for expect debugging
